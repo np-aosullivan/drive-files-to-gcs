@@ -1,0 +1,12 @@
+# Dependencies
+node_modules/
+
+# Environment variables
+.env 
+
+# Google Cloud credentials
+# IMPORTANT: Never commit service account keys to version control.
+gcp-credentials.json
+
+# OS-generated files
+.DS_Store
