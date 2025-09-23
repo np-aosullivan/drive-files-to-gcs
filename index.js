@@ -2,21 +2,20 @@ const { google } = require('googleapis');
 const path = require('path');
 const { Storage } = require('@google-cloud/storage');
 
-// --- Configuration ---
-const SCOPES = ['https://www.googleapis.com/auth/drive.readonly'];
-const KEYFILE = path.join(__dirname, 'gcp-credentials.json');
-const DRIVE_FOLDER_ID = '1fxSeHlV3K9HG79TQzLllpw6dJqQnLkhi';
-const GCS_BUCKET_NAME = 'sow-agent-bucket';
-const GCS_DESTINATION_PREFIX = 'Sow Delivery Catalogues/';
+// --- Configuration (Best practice: use environment variables in the cloud) ---
+const DRIVE_FOLDER_ID = process.env.DRIVE_FOLDER_ID;
+const GCS_BUCKET_NAME = process.env.GCS_BUCKET_NAME;
+const GCS_DESTINATION_PREFIX = process.env.GCS_DESTINATION_PREFIX;
+
+const SCOPES = ['https://www.googleapis.com/auth/drive/readonly'];
 
 // --- Clients ---
 const auth = new google.auth.GoogleAuth({
-    keyFile: KEYFILE,
     scopes: SCOPES,
 });
 
 const drive = google.drive({ version: 'v3', auth });
-const storage = new Storage({ keyFilename: KEYFILE });
+const storage = new Storage();
 const bucket = storage.bucket(GCS_BUCKET_NAME);
 
 
@@ -98,17 +97,25 @@ async function transferFile(file) {
     });
 }
 
-async function main() {
+/**
+ * The entry point for the Cloud Function, triggered by Cloud Scheduler.
+ * @param {object} pubSubMessage The event payload.
+ * @param {object} context The event metadata.
+ */
+exports.transferDriveFilesToGCS = async (pubSubMessage, context) => {
+    console.log('Cloud Function triggered to transfer files from Drive to GCS.');
     try {
         const filesToUpload = await listFiles();
-        if (filesToUpload.length === 0) return;
+        if (!filesToUpload || filesToUpload.length === 0) {
+            console.log('No files found to process.');
+            return;
+        }
 
         const uploadPromises = filesToUpload.map(transferFile);
         await Promise.all(uploadPromises);
         console.log('\nAll files have been processed.');
     } catch (error) {
-        console.error(error);
+        console.error('FATAL: An error occurred during the transfer process:', error);
+        throw error; // Throwing error marks the function execution as failed for monitoring.
     }
-}
-
-main();
+};
