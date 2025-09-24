@@ -1,12 +1,16 @@
 # Dependencies
 node_modules/
 
-# Environment variables
-.env 
-
-# Google Cloud credentials
-# IMPORTANT: Never commit service account keys to version control.
+# Secrets and Environment Variables
+# These files contain sensitive information and should not be committed.
 gcp-credentials.json
+.env
+
+# Logs
+logs
+*.log
+npm-debug.log*
 
 # OS-generated files
 .DS_Store
+Thumbs.db

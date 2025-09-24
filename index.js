@@ -1,5 +1,4 @@
 const { google } = require('googleapis');
-const path = require('path');
 const { Storage } = require('@google-cloud/storage');
 
 // --- Configuration (Best practice: use environment variables in the cloud) ---
@@ -7,14 +6,17 @@ const DRIVE_FOLDER_ID = process.env.DRIVE_FOLDER_ID;
 const GCS_BUCKET_NAME = process.env.GCS_BUCKET_NAME;
 const GCS_DESTINATION_PREFIX = process.env.GCS_DESTINATION_PREFIX;
 
-const SCOPES = ['https://www.googleapis.com/auth/drive/readonly'];
+const SCOPES = ['https://www.googleapis.com/auth/drive.readonly'];
 
 // --- Clients ---
+// Create an auth object that specifies the required scopes.
+// It will automatically use ADC to find credentials (from .env locally,
+// or from the runtime environment in the cloud).
 const auth = new google.auth.GoogleAuth({
     scopes: SCOPES,
 });
 
-const drive = google.drive({ version: 'v3', auth });
+const drive = google.drive({ version: 'v3', auth: auth });
 const storage = new Storage();
 const bucket = storage.bucket(GCS_BUCKET_NAME);
 
@@ -55,23 +57,10 @@ async function transferFile(file) {
 
         if (file.mimeType.startsWith('application/vnd.google-apps.')) {
             // This is a Google Doc/Sheet/etc. It needs to be exported.
-            let exportMimeType, exportExtension;
-            switch (file.mimeType) {
-                case 'application/vnd.google-apps.document':
-                    exportMimeType = 'application/pdf';
-                    exportExtension = '.pdf';
-                    break;
-                case 'application/vnd.google-apps.spreadsheet':
-                    exportMimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-                    exportExtension = '.xlsx';
-                    break;
-                default:
-                    console.log(`   - Skipping unsupported Google file type: ${file.mimeType}`);
-                    return resolve(); // Skip this file
-            }
+            const exportMimeType = 'application/pdf';
+            finalFileName = `${file.name}.pdf`; // Append .pdf to the name
+            console.log(`Exporting Google Doc "${file.name}" as PDF to GCS...`);
 
-            finalFileName += exportExtension;
-            console.log(`   - Exporting as ${exportExtension}`);
             driveStream = await drive.files.export(
                 { fileId: file.id, mimeType: exportMimeType },
                 { responseType: 'stream' }
@@ -115,7 +104,7 @@ exports.transferDriveFilesToGCS = async (pubSubMessage, context) => {
         await Promise.all(uploadPromises);
         console.log('\nAll files have been processed.');
     } catch (error) {
-        console.error('FATAL: An error occurred during the transfer process:', error);
+        console.error('FATAL: An error occurred during the transfer process:', error.message);
         throw error; // Throwing error marks the function execution as failed for monitoring.
     }
-};
+}
