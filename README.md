@@ -82,15 +82,16 @@ gcloud pubsub topics create drive-transfer-topic
 
 Run the following command, replacing `<your-service-account>` with the email of the service account you created.
 ```bash
-gcloud functions deploy transferDriveToGCS \
-  --runtime nodejs18 \
+gcloud functions deploy transferDriveFilesToGCS \
+  --runtime nodejs20 \
   --trigger-topic drive-transfer-topic \
   --entry-point transferDriveFilesToGCS \
   --service-account <your-service-account> \
   --region europe-west2 \
   --timeout 540s \
-  --set-env-vars DRIVE_FOLDER_ID=YOUR_DRIVE_FOLDER_ID,GCS_BUCKET_NAME=YOUR_GCS_BUCKET_NAME,GCS_DESTINATION_PREFIX="YOUR_DESTINATION_PREFIX
+  --set-env-vars DRIVE_FOLDER_ID=YOUR_DRIVE_FOLDER_ID,GCS_BUCKET_NAME=YOUR_GCS_BUCKET_NAME,GCS_DESTINATION_PREFIX="YOUR_DESTINATION_PREFIX/"
 ```
+
 
 ## 5. Scheduling
 
