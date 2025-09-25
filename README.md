@@ -17,10 +17,11 @@ Enable the following APIs in your Google Cloud project:
 
 ### Create a Service Account
 
-This function runs with its own identity. Create a service account and grant it the following IAM roles:
+This function runs with its own identity. Create a service account for the function and grant it the following IAM roles on your project. This identity is used by the function to write to your Cloud Storage bucket.
 - **Storage Object Admin** (`roles/storage.objectAdmin`): Allows the function to create and overwrite files in your Cloud Storage bucket.
-- **Cloud Functions Invoker** (`roles/cloudfunctions.invoker`): Allows Cloud Scheduler to trigger your function.
-- **Pub/Sub Publisher** (`roles/pubsub.publisher`): Allows Cloud Scheduler to publish a message to trigger the function.
+- **Cloud Run Invoker** (`roles/run.invoker`): Allows the Pub/Sub trigger to invoke this 2nd gen function's underlying Cloud Run service.
+
+The permission for the scheduler will be configured in a later step.
 
 ## 2. Configuration
 
@@ -104,3 +105,11 @@ gcloud scheduler jobs create pubsub nightly-drive-transfer \
   --message-body "Run" \
   --time-zone "Europe/London"
 ```
+
+## 6. Grant Scheduler Permissions
+
+The Cloud Scheduler job needs permission to publish messages to your Pub/Sub topic. By default, Cloud Scheduler uses the **App Engine default service account** (<your-project-id>@appspot.gserviceaccount.com). 
+
+Grant this service account the following role:
+- **Pub/Sub Publisher** (`roles/pubsub.publisher`): Allows Cloud Scheduler to publish a message to trigger the function.
+
