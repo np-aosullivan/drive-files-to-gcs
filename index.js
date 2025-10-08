@@ -1,33 +1,44 @@
 const { google } = require('googleapis');
 const { Storage } = require('@google-cloud/storage');
 
-// --- Configuration (Best practice: use environment variables in the cloud) ---
+// --- Configuration (from environment variables) ---
 const DRIVE_FOLDER_ID = process.env.DRIVE_FOLDER_ID;
 const GCS_BUCKET_NAME = process.env.GCS_BUCKET_NAME;
+const SHARED_DRIVE_ID = process.env.SHARED_DRIVE_ID;
 const GCS_DESTINATION_PREFIX = process.env.GCS_DESTINATION_PREFIX;
 
-const SCOPES = ['https://www.googleapis.com/auth/drive.readonly'];
+// OAuth2 credentials for user-based authentication
+const OAUTH_CLIENT_ID = process.env.OAUTH_CLIENT_ID;
+const OAUTH_CLIENT_SECRET = process.env.OAUTH_CLIENT_SECRET;
+const OAUTH_REFRESH_TOKEN = process.env.OAUTH_REFRESH_TOKEN;
 
 // --- Clients ---
-// Create an auth object that specifies the required scopes.
-// It will automatically use ADC to find credentials (from .env locally,
-// or from the runtime environment in the cloud).
-const auth = new google.auth.GoogleAuth({
-    scopes: SCOPES,
-});
+// Create an OAuth2 client to act on behalf of a user.
+// The refresh token will be used to generate a new access token for each run.
+const auth = new google.auth.OAuth2(
+    OAUTH_CLIENT_ID,
+    OAUTH_CLIENT_SECRET,
+);
+auth.setCredentials({ refresh_token: OAUTH_REFRESH_TOKEN });
 
 const drive = google.drive({ version: 'v3', auth: auth });
 const storage = new Storage();
 const bucket = storage.bucket(GCS_BUCKET_NAME);
 
+const fileNames = ['[Cloud] Raid Items', '[SaaS] Raid Items'];
 
 // Function to list available files in Google Drive
 async function listFiles() {
     try {
         const response = await drive.files.list({
-            q: `'${DRIVE_FOLDER_ID}' in parents and (name = 'Test file' or name = 'Test file 2')`,
+            q: `'${DRIVE_FOLDER_ID}' in parents and (${fileNames.map(name => `name contains '${name}'`).join(' or ')})`,
             pageSize: 200,
             fields: 'nextPageToken, files(id, name, mimeType)',
+            supportsAllDrives: true,
+            includeItemsFromAllDrives: true,
+            corpora: SHARED_DRIVE_ID ? 'drive' : 'user',
+            driveId: SHARED_DRIVE_ID,
+
         });
 
         const files = response.data.files;
